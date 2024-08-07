@@ -1,20 +1,38 @@
 "use client";
 
-import { useState, useEffect, useRef, RefObject } from "react";
+import { useState, useEffect, useRef, useReducer } from "react";
 import Timer, { TimerRef } from "@/app/ui/timer";
 import { TrashIcon } from "@heroicons/react/24/outline";
+import { Data, Action } from "@/app/models";
 
+function reducer(state: Data, { payload }: Action): Data {
+  switch (payload.type) {
+    case "SET_RESPONSE_MODE":
+      return { ...state, responseMode: payload.data };
+    case "SET_IS_RECORDING":
+      return { ...state, recording: payload.data };
+    case "SET_RESPONSE":
+      return { ...state, response: payload.data };
+    case "SET_AUDIO_URL":
+      return { ...state, audioUrl: payload.data };
+  }
+}
 export default function useAssistant() {
-  const [responseMode, setResponseMode] = useState<"text" | "audio">("text");
-  const [recording, setRecording] = useState<boolean>(false);
-  const [response, setResponse] = useState<string>("");
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
-    null
-  );
-  const [audioUrl, setAudioUrl] = useState<string>("");
+  const data: Data = {
+    responseMode: "text",
+    recording: false,
+    response: "",
+    audioUrl: "",
+  };
+  const [state, dispatch] = useReducer(reducer, data);
+  const { responseMode, recording, response, audioUrl } = state;
   const audioRef = useRef<HTMLAudioElement>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<TimerRef>(null);
+
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
+    null
+  );
 
   useEffect(() => {
     if (recording && mediaRecorder) {
@@ -41,13 +59,23 @@ export default function useAssistant() {
             type: "audio/wav",
           });
           const audioUrl = URL.createObjectURL(audioBlob);
-          setAudioUrl(audioUrl);
+          dispatch({
+            payload: {
+              data: audioUrl,
+              type: "SET_AUDIO_URL",
+            },
+          });
           audioChunksRef.current = [];
           setTimeout(() => {
             audioRef.current?.play();
           }, 3000);
         } else {
-          setResponse("This is a textual response.");
+          dispatch({
+            payload: {
+              data: "This is a textual response.",
+              type: "SET_RESPONSE",
+            },
+          });
         }
       };
     }
@@ -60,7 +88,9 @@ export default function useAssistant() {
         .then((stream) => {
           const recorder = new MediaRecorder(stream);
           setMediaRecorder(recorder);
-          setRecording(true);
+          dispatch({
+            payload: { data: true, type: "SET_IS_RECORDING" },
+          });
         })
         .catch((err) => {
           console.error(err);
@@ -71,12 +101,24 @@ export default function useAssistant() {
   };
 
   const stopRecording = () => {
-    setRecording(false);
+    dispatch({
+      payload: { data: false, type: "SET_IS_RECORDING" },
+    });
   };
 
   const clearData = () => {
-    setAudioUrl("");
-    setResponse("");
+    dispatch({
+      payload: {
+        data: "",
+        type: "SET_AUDIO_URL",
+      },
+    });
+    dispatch({
+      payload: {
+        data: "",
+        type: "SET_RESPONSE",
+      },
+    });
     timerRef.current?.resetTime();
   };
 
@@ -90,7 +132,11 @@ export default function useAssistant() {
             name="responseMode"
             value="text"
             checked={responseMode === "text"}
-            onChange={() => setResponseMode("text")}
+            onChange={() => {
+              dispatch({
+                payload: { type: "SET_RESPONSE_MODE", data: "text" },
+              });
+            }}
           />
           Text
         </label>
@@ -100,7 +146,11 @@ export default function useAssistant() {
             name="responseMode"
             value="audio"
             checked={responseMode === "audio"}
-            onChange={() => setResponseMode("audio")}
+            onChange={() => {
+              dispatch({
+                payload: { type: "SET_RESPONSE_MODE", data: "audio" },
+              });
+            }}
           />
           Audio
         </label>

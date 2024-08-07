@@ -6,11 +6,13 @@ import React, {
   forwardRef,
   useImperativeHandle,
 } from "react";
-
-const Chronometer = forwardRef((props, ref) => {
+export type TimerRef = {
+  resetTime: () => void;
+  handleTime: (start: boolean) => void;
+};
+const Timer = forwardRef<TimerRef>((props, ref) => {
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
-
   useEffect(() => {
     let timer: any;
     if (isRunning) {
@@ -48,4 +50,4 @@ const Chronometer = forwardRef((props, ref) => {
   );
 });
 
-export default Chronometer;
+export default Timer;
